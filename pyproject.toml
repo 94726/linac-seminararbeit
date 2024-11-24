@@ -1,0 +1,28 @@
+[project]
+name = "seminararbeit - linac"
+version = "0.1.0"
+description = "Project files of a 'Seminararbeit' involving a linac-model"
+authors = [
+    {name = "", email = ""},
+]
+dependencies = ["fastapi[standard]>=0.115.5", "gpiozero>=2.0.1", "rpi-hardware-pwm>=0.2.2", "lgpio>=0.2.2.0"]
+requires-python = "==3.12.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+]
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.scripts]
+dev = "fastapi dev --host 0.0.0.0"
+start = "fastapi run"
+lint = "ruff check"
+"lint:fix" = "ruff check --fix"
+format = "ruff format"
+style.composite = ["format", "lint:fix"]
+
