@@ -3,7 +3,7 @@ const backendUrl = 'http://192.168.178.163:8000'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
-  modules: ["@nuxtjs/tailwindcss", "shadcn-nuxt", '@vueuse/nuxt', '@nuxt/icon'],
+  modules: ["@nuxtjs/tailwindcss", "shadcn-nuxt", '@vueuse/nuxt', '@nuxt/icon', '@nuxt/eslint'],
   future: {
     compatibilityVersion: 4
   },

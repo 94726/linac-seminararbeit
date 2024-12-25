@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:7252768b45507be376b88b81023818c74ae45932d6ec3a705b03986791290634"
+content_hash = "sha256:28542e100e848a96f1928297ead0c7450c2a4425ee1dc1b7be63a9ab39e36343"
 
 [[metadata.targets]]
 requires_python = "==3.12.*"
@@ -296,6 +296,7 @@ name = "lgpio"
 version = "0.2.2.0"
 summary = "Linux SBC GPIO module"
 groups = ["default"]
+marker = "sys_platform == \"linux\""
 files = [
     {file = "lgpio-0.2.2.0-cp312-cp312-linux_armv7l.whl", hash = "sha256:6c65ac42e878764d04a71ed12fe6d46089b36e9e8127722bf29bb2e4bc91de22"},
     {file = "lgpio-0.2.2.0-cp312-cp312-manylinux_2_34_aarch64.whl", hash = "sha256:d907db79292c721c605af08187385ddb3b7af09907e1ffca56cf0cd6558ace0a"},
