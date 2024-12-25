@@ -10,6 +10,11 @@ class VoltageControl:
     # ref: https://www.electronicoscaldas.com/datasheet/MG90S_Tower-Pro.pdf
     def __init__(self, pwm_channel: int, hz=50, chip=2):
         self.pwm = HardwarePWM(pwm_channel=pwm_channel, hz=hz, chip=chip)
+        self.pwm.start(DUTY_CYCLE_POINTS['idle'])
+
+    def close(self):
+        self.turn_to('idle')
+        self.pwm.stop()
 
     @property
     def is_positive(self) -> bool:

@@ -85,7 +85,7 @@ async def lifespan(app: FastAPI):
     light_sensor.when_deactivated = lambda: print("ball left")
 
     yield  # Clean up
-    voltage.turn_to("idle")
+    voltage.close()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -125,3 +125,4 @@ async def post_mode(config: Configuration):
     print(config)
     control_mode = config.control_mode
     await manager.broadcast({"controlMode": control_mode})
+
