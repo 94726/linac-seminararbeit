@@ -1,89 +1,56 @@
+from __future__ import annotations
 import asyncio
-import json
 from contextlib import asynccontextmanager
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Literal, Optional
 
+from .control_modes import ControlMode, ManualMode, control_modes, ControlModes
+from .fastapi_utils import BaseSchema, WebsocketManager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.encoders import jsonable_encoder
-from fastapi.websockets import WebSocketState
 from gpiozero import Button, DigitalInputDevice
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
 
 from .voltage_control import VoltageControl
 
+DRIFT_TUBE_COUNT = 9
 
-class BaseSchema(BaseModel):
-    """Converts camelcase to snake_case and vice-versa"""
+ws_manager = WebsocketManager()
 
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        populate_by_name=True,
-        from_attributes=True,
-    )
+if not TYPE_CHECKING:
+    voltage = VoltageControl(pwm_channel=0)  # -> gpio18
 
 
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: set[WebSocket] = set()
+class Controls:
+    drift_tube_count = DRIFT_TUBE_COUNT
+    ws_manager = ws_manager
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.add(websocket)
+    @staticmethod
+    async def turn():
+        voltage.turn()
+        await ws_manager.broadcast({'firstVoltage': voltage.status_num})
 
-    def disconnect(self, websocket: WebSocket):
-        print("disconnect", self.active_connections)
-        self.active_connections.remove(websocket)
-        print(self.active_connections)
-
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
-
-    async def broadcast(self, message: Any):
-        for connection in self.active_connections:
-            if connection.client_state != WebSocketState.CONNECTED:
-                self.active_connections.remove(connection)
-                continue
-            print(connection.client_state)
-            await connection.send_text(json.dumps(jsonable_encoder(message)))
+    @staticmethod
+    async def reset():
+        voltage.turn_to('idle')
+        await ws_manager.broadcast({'firstVoltage': 0})
 
 
-voltage = VoltageControl(pwm_channel=0)
-
-type ControlModes = Literal["manual"] | Literal["automatic"]
-control_mode: ControlModes = "manual"
-
-manager = ConnectionManager()
-
-
-async def turn():
-    voltage.turn()
-    await manager.broadcast({"firstVoltage": voltage.status_num})
-
-
-async def reset():
-    voltage.turn_to("idle")
-    await manager.broadcast({"firstVoltage": 0})
-
-
-async def light_sensor_trigger():
-    if control_mode == "manual":
-        return
-    await turn()
+control_mode: ControlMode = ManualMode(Controls)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global button
     button = Button(2, bounce_time=0.05)
-    voltage.turn_to("idle")
+    voltage.turn_to('idle')
 
-    button.when_pressed = lambda: asyncio.run(turn())
+    button.when_pressed = lambda: asyncio.run(Controls.turn())
 
-    light_sensor = DigitalInputDevice(16, bounce_time=0.03)
-    light_sensor.when_activated = lambda: asyncio.run(light_sensor_trigger())
-    light_sensor.when_deactivated = lambda: print("ball left")
-
+    light_sensor = DigitalInputDevice(5, bounce_time=0.03, pull_up=False)
+    light_sensor.when_activated = lambda: asyncio.run(
+        control_mode.on_light_sensor_enter()
+    )
+    light_sensor.when_deactivated = lambda: asyncio.run(
+        control_mode.on_light_sensor_leave()
+    )
     yield  # Clean up
     voltage.close()
 
@@ -91,38 +58,48 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.websocket("/ws")
+@app.websocket('/ws')
 async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    await manager.broadcast(
-        {"firstVoltage": voltage.status_num, "controlMode": control_mode}
+    await ws_manager.connect(websocket)
+    await ws_manager.broadcast(
+        {'firstVoltage': voltage.status_num, 'controlMode': str(control_mode)}
     )
+    await control_mode.on_websocket_connect()
     try:
         while True:
             data = await websocket.receive_text()
-            await websocket.send_text(f"Message text was: {data}")
+            await websocket.send_text(f'Message text was: {data}')
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        ws_manager.disconnect(websocket)
 
 
-@app.post("/api/control/turn")
+@app.post('/api/control/turn')
 async def post_turn():
-    return await turn()
+    return await Controls.turn()
 
 
-@app.post("/api/control/reset")
+@app.post('/api/control/reset')
 async def post_reset():
-    return await reset()
+    await control_mode.on_mode_stop()
+    return await Controls.reset()
+
+class ModeConfiguration(BaseSchema):
+    control_mode: Optional[ControlModes] | None = None
+    operation: Optional[Literal['start', 'stop']] | None = None
 
 
-class Configuration(BaseSchema):
-    control_mode: ControlModes
-
-
-@app.post("/api/configuration")
-async def post_mode(config: Configuration):
+@app.post('/api/configuration')
+async def post_mode(config: ModeConfiguration):
     global control_mode
-    print(config)
-    control_mode = config.control_mode
-    await manager.broadcast({"controlMode": control_mode})
 
+    if config.control_mode and config.control_mode != str(control_mode):
+        await control_mode.on_mode_stop()
+        await Controls.reset()
+        control_mode = control_modes[config.control_mode](Controls)
+
+    if config.operation == 'start':
+        await control_mode.on_mode_start()
+    elif config.operation == 'stop':
+        await control_mode.on_mode_stop()
+        
+    await ws_manager.broadcast({'controlMode': str(control_mode)})

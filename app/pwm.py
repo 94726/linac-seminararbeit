@@ -14,7 +14,7 @@ def echo(message: int, file: str) -> None:
 
 class HardwarePWM:
     """
-    Control the hardware PWM on the Raspberry Pi. Need to first add `dtoverlay=pwm-2chan` to `/boot/config.txt`.
+    Control the hardware PWM on the Raspberry Pi. Requires to first add `dtoverlay=pwm-2chan` to `/boot/config.txt`.
 
     pwm0 is GPIO pin 18 is physical pin 32 (dtoverlay can be deployed to use GPIO 12 instead)
     pwm1 is GPIO pin 19 is physical pin 33 (dtoverlay can be deployed to use GPIO 13 instead)

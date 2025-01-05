@@ -12,7 +12,7 @@ const ws = useWebSocket(`${backendUrl.replace('http', 'ws')}/ws`, { autoReconnec
 const voltageData = ref(genVoltageData(1, driftTubeAmount))
 
 type LdrTimings = { enter: number, leave: number }
-const ldrTimings = ref<LdrTimings[]>([])
+const ldrData = ref<{ start: number, timings: LdrTimings[] }>()
 
 const chartData = computed(() => ({
   labels: Array.from({ length: driftTubeAmount }, (_, i) => `D${i + 1}`),
@@ -63,15 +63,33 @@ watch(ws.data, (_data) => {
   if ('controlMode' in data) {
     controlMode.value = data.controlMode
   }
+  if ('controlModeRunning' in data) {
+    controlModeRunning.value = data.controlModeRunning
+  }
+  if ('ldrData' in data) {
+    ldrData.value = data.ldrData
+  }
 })
 
 async function turnVoltage() {
   await $fetch('/api/control/turn', { method: 'post' })
 }
 
-async function startLDR() {
-  // TODO
-  $fetch('/api/control/start-ldr', { method: 'post' })
+async function startMode() {
+  $fetch('/api/configuration', {
+    method: 'post',
+    body: {
+      operation: 'start'
+    }
+  })
+}
+async function stopMode() {
+  $fetch('/api/configuration', {
+    method: 'post',
+    body: {
+      operation: 'stop'
+    }
+  })
 }
 
 async function reset() {
@@ -86,9 +104,10 @@ async function updateControlMode(_controlMode: ControlMode) {
   })
 }
 
-type ControlMode = 'manual' | 'automatic'
+type ControlMode = 'manual' | 'automatic' | 'oscillation'
 
 const controlMode = ref<ControlMode>('manual')
+const controlModeRunning = ref(false)
 </script>
 
 <template>
@@ -97,7 +116,7 @@ const controlMode = ref<ControlMode>('manual')
       <section>
         <Card
           class="p-4 md:p-8 justify-cente r gap-6 rounded-lg flex flex-col md:grid md:grid-cols-[1fr_2fr] place-items-stretch">
-          <div class="flex flex-col gap-6 md:w-[330px]">
+          <div class="flex flex-col gap-6 md:w-[350px]">
             <Card>
               <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle class="font-medium">
@@ -133,17 +152,20 @@ const controlMode = ref<ControlMode>('manual')
               </CardHeader>
               <CardContent>
                 <Tabs :model-value="controlMode" @update:model-value="(v) => updateControlMode(v as never)">
-                  <TabsList class="grid w-full grid-cols-2">
+                  <TabsList class="grid w-full grid-cols-3">
                     <TabsTrigger value="manual">
                       Manuell
                     </TabsTrigger>
                     <TabsTrigger value="automatic">
-                      Automatisch
+                      Auto
+                    </TabsTrigger>
+                    <TabsTrigger value="oscillation">
+                      Schwingen
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="manual" class="flex flex-col gap-2">
                     <CardDescription class="text-balance">
-                      Erlaubt manuelle Steuerung auf Knopfdruck
+                      Erlaubt manuelle Steuerung des Modells mittels Knopfdruck
                     </CardDescription>
                     <Button @click="turnVoltage">Spannung Umkehren</Button>
                     <Button variant="outline" @click="reset">Reset</Button>
@@ -152,7 +174,16 @@ const controlMode = ref<ControlMode>('manual')
                     <CardDescription class="text-balance">
                       Vollautomatische Steuerung mittels Lichtschranken
                     </CardDescription>
-                    <Button @click="startLDR">Starten</Button>
+                    <Button v-if="!controlModeRunning" @click="startMode">Starten</Button>
+                    <Button v-else disabled @click="startMode">Läuft...</Button>
+                    <Button variant="outline" @click="reset">Reset</Button>
+                  </TabsContent>
+                  <TabsContent value="oscillation" class="flex flex-col gap-2">
+                    <CardDescription class="text-balance">
+                      Bringt den Ball in eine Schwingung mittels Lichtschranken
+                    </CardDescription>
+                    <Button v-if="!controlModeRunning" @click="startMode">Starten</Button>
+                    <Button v-else disabled @click="startMode">Läuft...</Button>
                     <Button variant="outline" @click="reset">Reset</Button>
                   </TabsContent>
                 </Tabs>
@@ -161,8 +192,9 @@ const controlMode = ref<ControlMode>('manual')
           </div>
 
           <div>
-            <div class="grid h-full min-h-[300px] transition-all" :class="{
-              'grid-rows-[1fr_0fr] gap-0': controlMode == 'manual',
+            <div
+class="grid h-full min-h-[410px] transition-all" :class="{
+              'grid-rows-[1fr_0fr] gap-0': controlMode == 'manual' || controlMode == 'oscillation',
               'grid-rows-[1fr_1fr] gap-6': controlMode == 'automatic',
             }">
               <Card class="overflow-hidden flex flex-col">
@@ -195,16 +227,16 @@ const controlMode = ref<ControlMode>('manual')
                           <TableCell class="font-medium whitespace-nowrap">
                             Eintrittszeitpunkt in s
                           </TableCell>
-                          <TableCell v-for="time in ldrTimings" :key="time.enter">
-                            {{ time.enter.toFixed(2) }}
+                          <TableCell v-for="time in ldrData?.timings" :key="time.enter">
+                            {{ ((time.enter - ldrData.start) / 1000).toFixed(2) }}
                           </TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell class="font-medium whitespace-nowrap">
                             Dunkelzeit in s
                           </TableCell>
-                          <TableCell v-for="time in ldrTimings" :key="time.enter">
-                            {{ (time.leave - time.enter).toFixed(2) }}
+                          <TableCell v-for="time in ldrData?.timings" :key="time.enter">
+                            {{ ((time.leave - time.enter) / 1000).toFixed(2) }}
                           </TableCell>
                         </TableRow>
                       </TableBody>

@@ -12,26 +12,27 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@nuxt/eslint": "^0.7.2",
+    "@nuxt/eslint": "^0.7.4",
     "@nuxt/icon": "latest",
+    "@nuxtjs/color-mode": "3.5.2",
     "@radix-icons/vue": "^1.0.0",
-    "@unovis/ts": "^1.5.0-beta.0",
-    "@unovis/vue": "^1.5.0-beta.0",
-    "@vueuse/core": "^11.2.0",
+    "@unovis/ts": "^1.5.0",
+    "@unovis/vue": "^1.5.0",
+    "@vueuse/core": "^12.3.0",
     "@vueuse/nuxt": "latest",
-    "chart.js": "^4.4.6",
-    "class-variance-authority": "^0.7.0",
+    "chart.js": "^4.4.7",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "nuxt": "^3.14.159",
-    "radix-vue": "^1.9.9",
-    "tailwind-merge": "^2.5.4",
+    "nuxt": "^3.15.0",
+    "radix-vue": "^1.9.12",
+    "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vue": "latest",
     "vue-chartjs": "^5.3.2",
     "vue-router": "latest"
   },
   "devDependencies": {
-    "@nuxtjs/tailwindcss": "latest",
-    "shadcn-nuxt": "^0.10.4"
+    "@nuxtjs/tailwindcss": "npm:@nuxtjs/tailwindcss@nightly",
+    "shadcn-nuxt": "^0.11.3"
   }
 }

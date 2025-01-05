@@ -29,7 +29,7 @@ tmux-windowizer raspi cd ~/seminar
 # # tmux-windowizer raspi "clear"
 
 # tmux-windowizer raspi "python3 $filename"
-tmux-windowizer raspi 'eval $(pdm venv activate)'
-tmux-windowizer raspi 'python app/brrr.py'
+# tmux-windowizer raspi 'eval $(pdm venv activate)'
+# tmux-windowizer raspi 'pdm dev'
 # tmux-windowizer raspi "fastapi dev --host 0.0.0.0"
 
