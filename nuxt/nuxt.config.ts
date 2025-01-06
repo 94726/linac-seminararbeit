@@ -1,4 +1,4 @@
-const backendUrl = 'http://192.168.178.163:8000'
+const backendUrl = 'http://192.168.178.163:8080'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -14,9 +14,15 @@ export default defineNuxtConfig({
   future: {
     compatibilityVersion: 4
   },
-  routeRules: {
-    '/api/**': {
-      proxy: process.env.NODE_ENV !== "production" ? `${backendUrl}/api/**` : undefined
+  nitro: {
+    devProxy: {
+      '/api/ws': {
+        target: `${backendUrl}`, // the fix module doesn't strip the /api part so not necessary here
+        ws: true
+      },
+      '/api': {
+        target: `${backendUrl}/api`,
+      },
     },
   },
   runtimeConfig: {
@@ -30,8 +36,6 @@ export default defineNuxtConfig({
   ],
   ssr: false,
   shadcn: {
-    // prefix: 'Ui',
-
     componentDir: './app/components/ui'
   },
 

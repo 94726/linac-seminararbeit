@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+function tmux-windowizer {
+  shift
+  tmux send-keys -t 1.2 "$*" Enter
+}
+
+rsync -aP -q --exclude '.*' ./ pi-hwifi:~/linac &
+tmux-windowizer raspi '[[ -z "$SSH_CLIENT" && -z "$SSH_TTY" ]] && ssh pi-hwifi'
+
+tmux-windowizer raspi "clear"
+tmux-windowizer raspi cd ~/linac
+

@@ -6,10 +6,9 @@ ChartJS.register(Title, Tooltip, Legend, LineElement, LinearScale, CategoryScale
 
 const driftTubeAmount = 9
 
-const { backendUrl } = useRuntimeConfig().public
-const ws = useWebSocket(`${backendUrl.replace('http', 'ws')}/ws`, { autoReconnect: true })
+const ws = useWebSocket('/api/ws', { autoReconnect: true })
 
-const voltageData = ref(genVoltageData(1, driftTubeAmount))
+const voltageData = ref(genVoltageData(0, driftTubeAmount))
 
 type LdrTimings = { enter: number, leave: number }
 const ldrData = ref<{ start: number, timings: LdrTimings[] }>()
@@ -83,14 +82,6 @@ async function startMode() {
     }
   })
 }
-async function stopMode() {
-  $fetch('/api/configuration', {
-    method: 'post',
-    body: {
-      operation: 'stop'
-    }
-  })
-}
 
 async function reset() {
   await $fetch('/api/control/reset', { method: 'post' })
@@ -160,7 +151,7 @@ const controlModeRunning = ref(false)
                       Auto
                     </TabsTrigger>
                     <TabsTrigger value="oscillation">
-                      Schwingen
+                      Pendel
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="manual" class="flex flex-col gap-2">
@@ -228,7 +219,7 @@ class="grid h-full min-h-[410px] transition-all" :class="{
                             Eintrittszeitpunkt in s
                           </TableCell>
                           <TableCell v-for="time in ldrData?.timings" :key="time.enter">
-                            {{ ((time.enter - ldrData.start) / 1000).toFixed(2) }}
+                            {{ ((time.enter - ldrData!.start) / 1000).toFixed(2) }}
                           </TableCell>
                         </TableRow>
                         <TableRow>

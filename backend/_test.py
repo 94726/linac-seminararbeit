@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, Mock
 import pytest
 
+print()
 
 from .control_modes import (
     ControlMode,

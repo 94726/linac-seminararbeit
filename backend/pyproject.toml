@@ -28,8 +28,8 @@ dev = [
 distribution = false
 
 [tool.pdm.scripts]
-dev = "fastapi dev --host 0.0.0.0"
-start = "fastapi run"
+dev = "fastapi dev --host 0.0.0.0 --port 8080"
+start = "fastapi run --port 8080"
 lint = "ruff check"
 "lint:fix" = "ruff check --fix"
 "test:watch" = "pytest --looponfail --color=yes -s"
