@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# personal dev utility
 
 function tmux-windowizer {
   shift

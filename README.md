@@ -11,13 +11,13 @@ The only special requirement is to enable the PWM overlay by adding `dtoverlay=p
 ### 2. Backend
 
 The project uses a python [fastapi](https://fastapi.tiangolo.com/) backend, handling the RaspberryPis GPIO and logic of the linac.
-The backend can be found inside `/app`.
+The backend can be found inside `/backend`.
 
 Python and all of the necessary dependencies are managed using [pdm](https://pdm-project.org/latest/).
 
 ### 3. Frontend
 To visualize and controll the model, a frontend was made using nuxt (vue).
-The frontend can be found inside `/nuxt`.
+The frontend can be found inside `/frontend`.
 
 The javascript project is managed using [bun](https://bun.sh/) as package manager and runtime.
 

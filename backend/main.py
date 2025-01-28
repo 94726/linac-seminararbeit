@@ -74,7 +74,7 @@ app = FastAPI(lifespan=lifespan)  # the actual root server
 api = FastAPI()  # the sub-route handler for /api
 
 
-frontend_files_path = Path(__file__).parent / '../nuxt/.output/public'
+frontend_files_path = Path(__file__).parent / '../frontend/.output/public'
 
 
 # serves index.html, as StaticFiles doesn't handle the conversion from index.html to /
