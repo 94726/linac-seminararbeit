@@ -6,10 +6,15 @@ DUTY_CYCLE_POINTS = {"negative": 1, "positive": 1.8, "idle": 1.3}
 
 
 class VoltageControl:
-    # using custom pwm to avoid jitter
-    # ref: https://www.electronicoscaldas.com/datasheet/MG90S_Tower-Pro.pdf
-    def __init__(self, pwm_channel: int, hz=50, chip=2):
-        self.pwm = HardwarePWM(pwm_channel=pwm_channel, hz=hz, chip=chip)
+    """
+    Uses custom pwm to avoid jitter
+    see servo specs: https://www.electronicoscaldas.com/datasheet/MG90S_Tower-Pro.pdf
+    """
+    def __init__(self, gpio_pin: int, hz=50, chip=2):
+        self.pwm = HardwarePWM(gpio_pin=gpio_pin, hz=hz, chip=chip)
+        self.start()
+
+    def start(self):
         self.pwm.start(DUTY_CYCLE_POINTS['idle'])
 
     def close(self):

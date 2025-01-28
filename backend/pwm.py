@@ -1,4 +1,5 @@
 import os
+import subprocess
 import os.path
 from os.path import join
 
@@ -8,13 +9,28 @@ class HardwarePWMException(Exception):
 
 
 def echo(message: int, file: str) -> None:
-    with open(file, "w") as f:
-        f.write(f"{message}\n")
+    with open(file, 'w') as f:
+        f.write(f'{message}\n')
+
+
+""" 
+There are a few for pwm eligable pins, but each of them requires a slightly different setup.
+Optimally one should configure it via a correct dtoverlay, but this dict allows the HardwarePWM to set itself up
+see table or bash script at: https://gist.github.com/Gadgetoid/b92ad3db06ff8c264eef2abf0e09d569
+"""
+GPIO_TO_CHANNEL_MAPPING = {
+    19: (3, 'a3'),
+    18: (2, 'a3'),
+    15: (3, 'a0'),
+    14: (2, 'a0'),
+    13: (1, 'a0'),
+    12: (0, 'a0'),
+}
 
 
 class HardwarePWM:
     """
-    Control the hardware PWM on the Raspberry Pi. Requires to first add `dtoverlay=pwm-2chan` to `/boot/config.txt`.
+    Control the hardware PWM on the Raspberry Pi. Requires to first add `dtoverlay=pwm-2chan` to `/boot/firmware/config.txt`.
 
     pwm0 is GPIO pin 18 is physical pin 32 (dtoverlay can be deployed to use GPIO 12 instead)
     pwm1 is GPIO pin 19 is physical pin 33 (dtoverlay can be deployed to use GPIO 13 instead)
@@ -40,17 +56,19 @@ class HardwarePWM:
 
     _duty_cycle: float
     _hz: float
-    chippath: str = "/sys/class/pwm/pwmchip0"  # mostly here for testing
+    chippath: str
 
-    def __init__(self, pwm_channel: int, hz: float, chip: int = 0) -> None:
-        if pwm_channel not in {0, 1, 2, 3}:
+    def __init__(self, gpio_pin: int, hz: float, chip: int = 2) -> None:
+        if gpio_pin not in GPIO_TO_CHANNEL_MAPPING:
             raise HardwarePWMException(
-                "Only channel 0 and 1 and 2 and 3 are available on the Rpi."
+                f'Available gpio pins are: {GPIO_TO_CHANNEL_MAPPING.keys()}; got {gpio_pin} instead'
             )
+        self.gpio_pin = gpio_pin
+        self.gpio_func = GPIO_TO_CHANNEL_MAPPING[gpio_pin][1]
 
-        self.chippath: str = f"/sys/class/pwm/pwmchip{chip}"
-        self.pwm_channel = pwm_channel
-        self.pwm_dir = f"{self.chippath}/pwm{self.pwm_channel}"
+        self.chippath: str = f'/sys/class/pwm/pwmchip{chip}'
+        self.pwm_channel = GPIO_TO_CHANNEL_MAPPING[gpio_pin][0]
+        self.pwm_dir = f'{self.chippath}/pwm{self.pwm_channel}'
         self._duty_cycle = 0
 
         if not self.is_overlay_loaded():
@@ -75,26 +93,28 @@ class HardwarePWM:
         return os.path.isdir(self.chippath)
 
     def is_export_writable(self) -> bool:
-        return os.access(join(self.chippath, "export"), os.W_OK)
+        return os.access(join(self.chippath, 'export'), os.W_OK)
 
     def does_pwmX_exists(self) -> bool:
         return os.path.isdir(self.pwm_dir)
 
     def create_pwmX(self) -> None:
-        echo(self.pwm_channel, join(self.chippath, "export"))
+        echo(self.pwm_channel, join(self.chippath, 'export'))
 
     def start(self, initial_duty_cycle_ms: float) -> None:
+        """sets up and starts pwm pin"""
+        subprocess.run(['pinctrl', 'set', str(self.gpio_pin), self.gpio_func])
         self.change_duty_cycle(initial_duty_cycle_ms)
-        echo(1, join(self.pwm_dir, "enable"))
+        echo(1, join(self.pwm_dir, 'enable'))
 
     def stop(self) -> None:
         self.change_duty_cycle(0)
-        echo(0, join(self.pwm_dir, "enable"))
+        echo(0, join(self.pwm_dir, 'enable'))
 
     def change_duty_cycle(self, duty_cycle_ms: float) -> None:
         self._duty_cycle = duty_cycle_ms
         dc = int(duty_cycle_ms * 1_000_000)
-        echo(dc, join(self.pwm_dir, "duty_cycle"))
+        echo(dc, join(self.pwm_dir, 'duty_cycle'))
 
     def change_frequency(self, hz: float) -> None:
         if hz < 0.1:
@@ -109,6 +129,6 @@ class HardwarePWM:
         per = 1 / float(self._hz)
         per *= 1000  # now in milliseconds
         per *= 1_000_000  # now in nanoseconds
-        echo(int(per), join(self.pwm_dir, "period"))
+        echo(int(per), join(self.pwm_dir, 'period'))
 
         self.change_duty_cycle(original_duty_cycle)

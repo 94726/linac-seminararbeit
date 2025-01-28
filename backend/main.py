@@ -14,14 +14,20 @@ import warnings
 
 from .voltage_control import VoltageControl
 
+# constants like pin-layout
 DRIFT_TUBE_COUNT = 9
-LIGHT_SENSOR_PINS = (20, 21)
+DRIFT_TUBE_METERS_BETWEEN = 0.15  # roughly 15 cm between each drift tube
+LIGHT_SENSOR_PINS = (16, 20)
+SERVO_PIN = 18
+
 
 ws_manager = WebsocketManager()
 
-# otherwise causes issues with importing in tests, as the environment doesn't have gpio
-if not TYPE_CHECKING:
-    voltage = VoltageControl(pwm_channel=0)  # -> gpio18
+voltage: VoltageControl
+if not TYPE_CHECKING:  # otherwise causes issues with importing in tests, as not every environment has gpio
+    voltage = VoltageControl(gpio_pin=SERVO_PIN)
+
+
 
 
 class Controls:
@@ -43,9 +49,9 @@ control_mode: ControlMode = ManualMode(Controls)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # runs when fastapi-server started
     voltage.turn_to('idle')
-    light_sensors = []  # keeps light_sensors in memory so gpiozero doesn't clean them up
+    light_sensors = []  # keeps light_sensors in memory so gpiozero doesn't clean them up until this function concludes (yield)
 
     for light_sensor_pin in LIGHT_SENSOR_PINS:
         light_sensor = DigitalInputDevice(
@@ -63,31 +69,43 @@ async def lifespan(app: FastAPI):
     voltage.close()
 
 
-app = FastAPI(lifespan=lifespan)
-api = FastAPI()
+# split server setup to make sure, all static-files (frontend) are served, unless it's a request to /api
+app = FastAPI(lifespan=lifespan)  # the actual root server
+api = FastAPI()  # the sub-route handler for /api
+
 
 frontend_files_path = Path(__file__).parent / '../nuxt/.output/public'
 
 
+# serves index.html, as StaticFiles doesn't handle the conversion from index.html to /
 @app.get('/', response_class=FileResponse)
 async def index(request: Request):
     return frontend_files_path / 'index.html'
 
 
 app.mount('/api', api)
+
 if frontend_files_path.exists():
-    app.mount('/', StaticFiles(directory=frontend_files_path), name='static')
+    app.mount('/', StaticFiles(directory=frontend_files_path), name='static') # serves assests of the frontend
 else:
     warnings.warn(
         'Static files not found, please run "bun generate" to build nuxt frontend, see README.md'
     )
 
 
+# websocket to allow synchronized communication between multiple clients
 @api.websocket('/ws')
 async def websocket_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)
     await ws_manager.broadcast(
-        {'firstVoltage': voltage.status_num, 'controlMode': str(control_mode)}
+        {
+            'firstVoltage': voltage.status_num,
+            'controlMode': str(control_mode),
+            'driftTubeData': {
+                'count': DRIFT_TUBE_COUNT,
+                'meters_between': DRIFT_TUBE_METERS_BETWEEN,
+            },
+        }
     )
     await control_mode.on_websocket_connect()
     try:
