@@ -1,4 +1,4 @@
-const backendUrl = 'http://192.168.178.163:8080'
+const backendUrl = 'http://linac.local'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -37,6 +37,11 @@ export default defineNuxtConfig({
   ssr: false,
   shadcn: {
     componentDir: './app/components/ui'
+  },
+  icon: {
+    clientBundle: {
+      scan: true
+    }
   },
 
   devtools: { enabled: true },
